@@ -15,14 +15,9 @@ from xgboost import XGBRegressor, XGBClassifier
 import sys
 import os
 import json
-# sys.path.append(os.path.abspath
-#                 (os.path.join
-#                  (os.path.dirname("constants.py"), '..')))
-print('=================')
-ROOT_DIR = os.getcwd()
-sys.path.append(F'{ROOT_DIR}\Utils')
-from Utils.constants import *
-from scripts import *
+
+from constants import *
+
 
 import warnings
 pd.set_option('display.max_rows', 100)
