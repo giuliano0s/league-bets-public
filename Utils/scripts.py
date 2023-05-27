@@ -1,6 +1,6 @@
 from IPython.display import HTML
 import random
-from constants import *
+import constants
 import pandas as pd
 import numpy as np
 import random
@@ -9,123 +9,7 @@ import sklearn.metrics as skm
 from sklearn.metrics import accuracy_score
 from sklearn.cluster import AffinityPropagation as AP
 
-########====================================================Interface====================================================########
-def hide_toggle(for_next=False):
-    this_cell = """$('div.cell.code_cell.rendered.selected')"""
-    next_cell = this_cell + '.next()'
-
-    toggle_text = 'Toggle show/hide'  # text shown on toggle link
-    target_cell = this_cell  # target cell to control with toggle
-    js_hide_current = ''  # bit of JS to permanently hide code in current cell (only when toggling next cell)
-
-    if for_next:
-        target_cell = next_cell
-        toggle_text += ' next cell'
-        js_hide_current = this_cell + '.find("div.input").hide();'
-
-    js_f_name = 'code_toggle_{}'.format(str(random.randint(1,2**64)))
-
-    html = """
-        <script>
-            function {f_name}() {{
-                {cell_selector}.find('div.input').toggle();
-            }}
-
-            {js_hide_current}
-        </script>
-
-        <a href="javascript:{f_name}()">{toggle_text}</a>
-    """.format(
-        f_name=js_f_name,
-        cell_selector=target_cell,
-        js_hide_current=js_hide_current, 
-        toggle_text=toggle_text
-    )
-
-    return HTML(html)
-    
-########====================================================Scrapping====================================================########
-def getMatchStats(code):
-    page = requests.get(f'https://gol.gg/game/stats/{code}/page-game/',headers=headers)
-    bs = BeautifulSoup(page.content, 'lxml')
-    redScore = int(bs.find_all('span',class_='score-box red_line')[0].text)
-    blueScore = int(bs.find_all('span',class_='score-box blue_line')[0].text)
-    allScore = redScore+blueScore
-    
-    return [blueScore, redScore, allScore]
-
-def scoreSelect(score):
-    blueScore = int(score[0])
-    redScore = int(score[-1])
-    
-    finalScore = blueScore-redScore
-    
-    if finalScore < 0:
-        return 1
-    elif finalScore > 0:
-        return 0
-    else:
-        return 2
-    
-def teamTournamentFind(code,split):
-    page = requests.get(f'https://gol.gg/teams/team-matchlist/{code}/split-{split}/tournament-ALL/',headers=headers)
-    bs = BeautifulSoup(page.content, 'lxml')
-    linhas = bs.select("""a[href*='tournament/tournament-stats/']""")
-    tournamentNames = [x['href'].split('/')[-2] for x in linhas]
-    ret = max(set(tournamentNames), key = tournamentNames.count)
-
-    return ret
-
-def playerTournamentFind(code,season,split):
-    page = requests.get(f'https://gol.gg/players/player-matchlist/{code}/season-{season}/split-{split}/tournament-ALL/',headers=headers)
-    bs = BeautifulSoup(page.content, 'lxml')
-    linhas = bs.select("""a[href*='tournament/tournament-stats/']""")
-    tournamentNames = [x['href'].split('/')[-2] for x in linhas]
-    ret = max(set(tournamentNames), key = tournamentNames.count)
-
-    return ret
-
-########====================================================Data manipulation====================================================########
-
-def train_test_split2(dfToSplitFunc,df2, tournamentId, currentTarget, dropTypeF, verbose=True):
-    testData = df2[df2['tournament_id']==tournamentId].copy()
-    testData = filterNan(testData,1)
-    xtest= testData.drop(['Date',currentTarget],axis=1).copy()
-    xtest= xtest.drop(offCols,axis=1,errors='ignore')
-    ytest = testData[currentTarget]
-    
-    trainData = dfToSplitFunc[dfToSplitFunc['tournament_id']!=tournamentId].copy()
-    trainData = filterNan(trainData,dropTypeF)
-    xtrain = trainData.drop(['Date',currentTarget],axis=1).copy()
-    xtrain = xtrain.drop(offCols,axis=1,errors='ignore')
-    ytrain = trainData[currentTarget]
-    
-    if list(ytrain).count(0)/len(ytrain)==1:
-        print(len(ytrain))
-        print(dropTypeF)
-        print(dfToSplitFunc[currentTarget])
-        print(df2[currentTarget])
-        print('==========================================================')
-    print('============')
-    
-    ytrain_mean, ytrain_std = np.mean(ytrain), np.std(ytrain)
-    cut_off = ytrain_std * 1.1
-    lower, upper = ytrain_mean - cut_off, ytrain_mean + cut_off
-    
-    outlierMask = ytrain.apply(lambda x: False if x < lower or x > upper else True)
-    
-    if verbose:
-        print(f'train len: {len(xtrain)}')
-    lentemp = len(xtrain)
-    xtrain, ytrain = xtrain[outlierMask], ytrain[outlierMask]
-    if verbose:
-        print(f'train len no outliers: {len(xtrain)}')
-        print(f'percent of len removed: {round(abs(len(xtrain)/lentemp*100-100),2)}%')
-        print(f'test len: {len(xtest)}\n')
-    
-    return xtrain, ytrain, xtest, ytest
-
-########====================================================Output generation====================================================########
+#%%====================================================Output generation====================================================########
 def printFinalResults(df, accName):
     print('===============================\n')
     meanAcc = df[accName].mean()
