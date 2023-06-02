@@ -1,5 +1,5 @@
 ########====================================================IMPORTS====================================================########
-import urllib.request
+#import urllib.request
 from bs4 import BeautifulSoup
 import requests
 from requests.adapters import HTTPAdapter
@@ -17,7 +17,7 @@ headers.update({"User-Agent": "Chrome/51.0.2704.103"})
 
 ########====================================================CLASS====================================================########
 
-class Scraping:
+class Scraping_Class:
 
     def __init__(self) -> None:
         pass

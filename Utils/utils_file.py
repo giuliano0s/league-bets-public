@@ -24,7 +24,7 @@ from xgboost import XGBRegressor
 
 ##=================================NATIVES=================================##
 import json
-from constants import *
+from utils.constants import *
 import warnings
 
 ##=================================OPTIONS=================================##
@@ -34,25 +34,25 @@ warnings.filterwarnings('ignore')
 
 ##=================================CLASS=================================##
 
-class Utils:
+class Utils_Class:
 
-    def __init__(self, target, year, semester, split_type, fill=True) -> None:
+    def __init__(self, target, year, semester, split_type, default_model, fill=True) -> None:
         self.TARGET = target
+        self.FILL = fill
+        self.DEFAULT_MODEL = default_model
+        self.INFO_COLS = ['Date', 'tournamentId', self.TARGET, 'regionAbrev']
+
         self.CURRENT_YEAR = year
         self.CURRENT_SEMESTER = semester
         self.CURRENT_SEMESTER_YEAR = str(self.CURRENT_YEAR)+str(self.CURRENT_SEMESTER)
-
         self.LAST_SEMESTER = abs(self.CURRENT_SEMESTER-1)
         self.LAST_YEAR = self.CURRENT_YEAR-1 if self.LAST_SEMESTER==1 else self.CURRENT_YEAR
         self.LAST_SEMESTER_YEAR = str(self.LAST_YEAR)+str(self.LAST_SEMESTER)
 
         self.SPLIT_TYPE = split_type
 
-        self.load_files() #playermatchlist, teammatchlist
-
-        self.FILL = fill
+        self.player_match_list, self.team_match_list = self.load_files(cache=False)
         self.TARGET_DF = self.team_match_list
-        self.INFO_COLS = PLAYER_INFO_COLS #TEAM_INFO_COLS
 
     def define_models(self, model_type):
         if model_type=='binary':
@@ -83,27 +83,30 @@ class Utils:
                                 ]
 
     def load_files(self, cache=True):
-        self.team_data_table = pd.read_pickle("Data/raw_data/teamDataTable.pkl")
-        self.player_data_table = pd.read_pickle("Data/raw_data/playerDataTable.pkl")
+        self.team_data_table = pd.read_pickle("data/raw_data/teamDataTable.pkl")
+        self.player_data_table = pd.read_pickle("data/raw_data/playerDataTable.pkl")
 
-        self.match_list = pd.read_pickle("Data/raw_data/matchList.pkl")
-        self.match_list_fill = pd.read_pickle("Data/raw_data/matchListFill.pkl")
-        self.match_list_fill = self.match_list_fill
+        self.match_list = pd.read_pickle("data/raw_data/matchList.pkl")
+        self.match_list_fill = pd.read_pickle("data/raw_data/matchListFill.pkl")
 
         if cache:
-            self.team_match_list = pd.read_pickle("Data/raw_data/teamMatchList.pkl")
-            self.player_match_list = pd.read_pickle("Data/raw_data/playerMatchList.pkl")
-            self.regions_stats = pd.read_pickle("./Data/raw_data/regionsStats.pkl")
+            team_match_list = pd.read_pickle("data/raw_data/teamMatchList.pkl")
+            player_match_list = pd.read_pickle("data/raw_data/playerMatchList.pkl")
+            self.regions_stats = pd.read_pickle("data/raw_data/regionsStats.pkl")
 
-            with open(f'./Data/raw_data/regionsFeatureCols.json', 'r') as fp:
+            with open(f'data/raw_data/regionsFeatureCols.json', 'r') as fp:
                 self.regions_feature_cols = json.load(fp)
-            with open(f'./Data/raw_data/regionsTrainData.json', 'r') as fp:
+            with open(f'data/raw_data/regionsTrainData.json', 'r') as fp:
                 self.regions_train_data = json.load(fp)
         else:
             if self.FILL:
-                self.split_match_list(self.match_list_fill)
+                df_to_split = self.match_list_fill
             else:
-                self.split_match_list(self.match_list)
+                df_to_split = self.match_list
+
+            player_match_list, team_match_list = self.split_match_list(df_to_split)
+        
+        return player_match_list, team_match_list
 
     def split_match_list(self, df):
         matchListDateFilter = (df[df['Date'] >= pd.to_datetime('2019-7-01',format='%Y-%m-%d')]
@@ -122,18 +125,17 @@ class Utils:
                     
             teamMatchList.drop([f"{position}_{color}" for position in ROLES],axis=1,inplace=True)
 
-        self.player_match_list = playerMatchList
-        self.team_match_list = teamMatchList
+        return playerMatchList, teamMatchList
     
-    def train_test_split_region(self, tournament_id, verbose=True):
+    def train_test_split_region(self, df_temp, tournament_id, verbose=True):
         
         if self.SPLIT_TYPE==0:
-            testData = self.TARGET_DF[self.TARGET_DF['tournamentId']==tournament_id].copy()
+            testData = df_temp[df_temp['tournamentId']==tournament_id].copy()
             xtest= testData.drop(['Date',self.TARGET],axis=1).copy()
             xtest= xtest.drop(OFF_COLS,axis=1,errors='ignore')
             ytest = testData[self.TARGET]
 
-            trainData = self.TARGET_DF[self.TARGET_DF['tournamentId']!=tournament_id].copy()
+            trainData = df_temp[df_temp['tournamentId']!=tournament_id].copy()
             xtrain = trainData.drop(['Date',self.TARGET],axis=1).copy()
             xtrain = xtrain.drop(OFF_COLS,axis=1,errors='ignore')
             ytrain = trainData[self.TARGET]
@@ -166,7 +168,7 @@ class Utils:
         df_temp = df_temp[temp_cols+self.INFO_COLS]
         df_temp = df_temp.sort_values(by='Date',ascending=True).copy()
         
-        xtrain, ytrain, xtest, ytest = self.train_test_split_region(tournament_id, verbose=False)
+        xtrain, ytrain, xtest, ytest = self.train_test_split_region(df_temp, tournament_id, verbose=False)
 
         errors=0
         for i in range(reps):
