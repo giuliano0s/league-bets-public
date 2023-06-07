@@ -3,7 +3,6 @@ import os
 ########%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%_System_%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%########
 ROOT_DIR = os.path.dirname(os.path.abspath('requirements.txt'))
 
-
 ########%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%_Date_%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%########
 SEASONS = ['S9','S10','S11','S12','S13']
 SEASONS_YEAR = [2019,2020,2021,2022,2023]
@@ -13,6 +12,8 @@ DATE_COLS = ['Semester','Year','Split']
 EXTRA_DATE_COLS = ['realSemester', 'realYear','realSemesterYear']
 ALL_DATE_COLS = DATE_COLS + EXTRA_DATE_COLS
 
+CURRENT_YEAR = 2023
+CURRENT_SEMESTER = 1
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%_Targets_%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 TARGETS = ['Score','totalKills']

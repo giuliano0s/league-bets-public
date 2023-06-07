@@ -36,7 +36,7 @@ warnings.filterwarnings('ignore')
 
 class Utils_Class:
 
-    def __init__(self, target, year, semester, split_type, default_model, fill=True) -> None:
+    def __init__(self, year=CURRENT_YEAR, semester=CURRENT_SEMESTER, target=None, split_type=None, default_model=None, fill=True) -> None:
         self.TARGET = target
         self.FILL = fill
         self.DEFAULT_MODEL = default_model
@@ -51,7 +51,7 @@ class Utils_Class:
 
         self.SPLIT_TYPE = split_type
 
-        self.player_match_list, self.team_match_list = self.load_files(cache=False)
+        self.player_match_list, self.team_match_list = self.load_files()
         self.TARGET_DF = self.team_match_list
 
     def define_models(self, model_type):
@@ -82,21 +82,33 @@ class Utils_Class:
                                 ,RandomForestRegressor() #8
                                 ]
 
-    def load_files(self, cache=True):
-        self.team_data_table = pd.read_pickle("data/raw_data/teamDataTable.pkl")
-        self.player_data_table = pd.read_pickle("data/raw_data/playerDataTable.pkl")
+    def load_files(self, cache_model=True, cache_scraping=True):
 
-        self.match_list = pd.read_pickle("data/raw_data/matchList.pkl")
-        self.match_list_fill = pd.read_pickle("data/raw_data/matchListFill.pkl")
+        tournaments_2023 = open("../Data/raw_data/tournaments_2023.txt", "r").read().split('\n')
+        tournaments_2022 = open("../Data/raw_data/tournaments_2022.txt", "r").read().split('\n')
+        tournaments_2021 = open("../Data/raw_data/tournaments_2021.txt", "r").read().split('\n')
+        tournaments_2020 = open("../Data/raw_data/tournaments_2020.txt", "r").read().split('\n')
+        tournaments_2019 = open("../Data/raw_data/tournaments_2019.txt", "r").read().split('\n')
+        tournaments_list = [tournaments_2023,tournaments_2022,tournaments_2021,tournaments_2020,tournaments_2019]
+        self.all_tournaments = []
+        for tournament in tournaments_list:
+            self.all_tournaments.extend(tournament)
 
-        if cache:
-            team_match_list = pd.read_pickle("data/raw_data/teamMatchList.pkl")
-            player_match_list = pd.read_pickle("data/raw_data/playerMatchList.pkl")
-            self.regions_stats = pd.read_pickle("data/raw_data/regionsStats.pkl")
+        if cache_scraping:
+            self.team_data_table = pd.read_pickle("../Data/raw_data/teamDataTable.pkl")
+            self.player_data_table = pd.read_pickle("../Data/raw_data/playerDataTable.pkl")
 
-            with open(f'data/raw_data/regionsFeatureCols.json', 'r') as fp:
+            self.match_list = pd.read_pickle("../Data/raw_data/matchList.pkl")
+            self.match_list_fill = pd.read_pickle("../Data/raw_data/matchListFill.pkl")
+
+        if cache_model:
+            team_match_list = pd.read_pickle("../Data/raw_data/teamMatchList.pkl")
+            player_match_list = pd.read_pickle("../Data/raw_data/playerMatchList.pkl")
+            self.regions_stats = pd.read_pickle("../Data/raw_data/regionsStats.pkl")
+
+            with open(f'../Data/raw_data/regionsFeatureCols.json', 'r') as fp:
                 self.regions_feature_cols = json.load(fp)
-            with open(f'data/raw_data/regionsTrainData.json', 'r') as fp:
+            with open(f'../Data/raw_data/regionsTrainData.json', 'r') as fp:
                 self.regions_train_data = json.load(fp)
         else:
             if self.FILL:
