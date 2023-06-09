@@ -95,20 +95,20 @@ class Utils_Class:
             self.all_tournaments.extend(tournament)
 
         if cache_scraping:
-            self.team_data_table = pd.read_pickle("../Data/raw_data/teamDataTable.pkl")
-            self.player_data_table = pd.read_pickle("../Data/raw_data/playerDataTable.pkl")
+            self.team_data_table = pd.read_pickle("../Data/raw_data/team_data_table.pkl")
+            self.player_data_table = pd.read_pickle("../Data/raw_data/player_data_table.pkl")
 
-            self.match_list = pd.read_pickle("../Data/raw_data/matchList.pkl")
-            self.match_list_fill = pd.read_pickle("../Data/raw_data/matchListFill.pkl")
+            self.match_list = pd.read_pickle("../Data/raw_data/match_list.pkl")
+            self.match_list_fill = pd.read_pickle("../Data/raw_data/match_list_fill.pkl")
 
         if cache_model:
-            team_match_list = pd.read_pickle("../Data/raw_data/teamMatchList.pkl")
-            player_match_list = pd.read_pickle("../Data/raw_data/playerMatchList.pkl")
-            self.regions_stats = pd.read_pickle("../Data/raw_data/regionsStats.pkl")
+            team_match_list = pd.read_pickle("../Data/raw_data/team_match_list.pkl")
+            player_match_list = pd.read_pickle("../Data/raw_data/player_match_list.pkl")
+            self.regions_stats = pd.read_pickle("../Data/raw_data/regions_stats.pkl")
 
-            with open(f'../Data/raw_data/regionsFeatureCols.json', 'r') as fp:
+            with open(f'../Data/raw_data/regions_feature_cols.json', 'r') as fp:
                 self.regions_feature_cols = json.load(fp)
-            with open(f'../Data/raw_data/regionsTrainData.json', 'r') as fp:
+            with open(f'../Data/raw_data/regions_train_data.json', 'r') as fp:
                 self.regions_train_data = json.load(fp)
         else:
             if self.FILL:
