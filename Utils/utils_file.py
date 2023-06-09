@@ -24,9 +24,9 @@ from xgboost import XGBRegressor
 
 ##=================================NATIVES=================================##
 import json
-from Utils.constants import *
 import warnings
 
+from Utils.constants import *
 ##=================================OPTIONS=================================##
 pd.set_option('display.max_rows', 100)
 pd.set_option('display.max_columns', None)
@@ -36,23 +36,30 @@ warnings.filterwarnings('ignore')
 
 class Utils_Class:
 
-    def __init__(self, year=CURRENT_YEAR, semester=CURRENT_SEMESTER, target=None, split_type=None, default_model=None, fill=True) -> None:
+    def __init__(self, year=CURRENT_YEAR, semester=CURRENT_SEMESTER, target=None, split_type=None
+                 , default_model=None, fill=True, cache_model=False, cache_scraping=False) -> None:
+        
         self.TARGET = target
         self.FILL = fill
         self.DEFAULT_MODEL = default_model
-        self.INFO_COLS = ['Date', 'tournamentId', self.TARGET, 'regionAbrev']
+        self.INFO_COLS = ['Date', 'tournamentId', self.TARGET, 'regionAbrev', 'realSemesterYear']
 
-        self.CURRENT_YEAR = year
-        self.CURRENT_SEMESTER = semester
-        self.CURRENT_SEMESTER_YEAR = str(self.CURRENT_YEAR)+str(self.CURRENT_SEMESTER)
-        self.LAST_SEMESTER = abs(self.CURRENT_SEMESTER-1)
-        self.LAST_YEAR = self.CURRENT_YEAR-1 if self.LAST_SEMESTER==1 else self.CURRENT_YEAR
+        self.YEAR = year
+        self.SEMESTER = semester
+        self.SEMESTER_YEAR = str(self.YEAR)+str(self.SEMESTER)
+        self.LAST_SEMESTER = abs(self.SEMESTER-1)
+        self.LAST_YEAR = self.YEAR-1 if self.LAST_SEMESTER==1 else self.YEAR
         self.LAST_SEMESTER_YEAR = str(self.LAST_YEAR)+str(self.LAST_SEMESTER)
 
         self.SPLIT_TYPE = split_type
 
-        self.player_match_list, self.team_match_list = self.load_files()
-        self.TARGET_DF = self.team_match_list
+        self.cache_model = cache_model
+        self.cache_scraping = cache_scraping
+
+        self.load_files()
+
+        if self.cache_scraping:
+            self.TARGET_DF = self.team_match_list
 
     def define_models(self, model_type):
         if model_type=='binary':
@@ -82,43 +89,40 @@ class Utils_Class:
                                 ,RandomForestRegressor() #8
                                 ]
 
-    def load_files(self, cache_model=True, cache_scraping=True):
+    def load_files(self):
 
-        tournaments_2023 = open("../Data/raw_data/tournaments_2023.txt", "r").read().split('\n')
-        tournaments_2022 = open("../Data/raw_data/tournaments_2022.txt", "r").read().split('\n')
-        tournaments_2021 = open("../Data/raw_data/tournaments_2021.txt", "r").read().split('\n')
-        tournaments_2020 = open("../Data/raw_data/tournaments_2020.txt", "r").read().split('\n')
-        tournaments_2019 = open("../Data/raw_data/tournaments_2019.txt", "r").read().split('\n')
+        tournaments_2023 = open(f"Data\\raw_data\\tournaments_2023.txt", "r").read().split('\n')
+        tournaments_2022 = open(f"Data\\raw_data\\tournaments_2022.txt", "r").read().split('\n')
+        tournaments_2021 = open(f"Data\\raw_data\\tournaments_2021.txt", "r").read().split('\n')
+        tournaments_2020 = open(f"Data\\raw_data\\tournaments_2020.txt", "r").read().split('\n')
+        tournaments_2019 = open(f"Data\\raw_data\\tournaments_2019.txt", "r").read().split('\n')
         tournaments_list = [tournaments_2023,tournaments_2022,tournaments_2021,tournaments_2020,tournaments_2019]
         self.all_tournaments = []
         for tournament in tournaments_list:
             self.all_tournaments.extend(tournament)
 
-        if cache_scraping:
-            self.team_data_table = pd.read_pickle("../Data/raw_data/team_data_table.pkl")
-            self.player_data_table = pd.read_pickle("../Data/raw_data/player_data_table.pkl")
+        if self.cache_scraping:
+            self.team_data_table = pd.read_pickle("Data\\raw_data\\team_data_table.pkl")
+            self.player_data_table = pd.read_pickle("Data\\raw_data\\player_data_table.pkl")
 
-            self.match_list = pd.read_pickle("../Data/raw_data/match_list.pkl")
-            self.match_list_fill = pd.read_pickle("../Data/raw_data/match_list_fill.pkl")
+            self.match_list = pd.read_pickle("Data\\raw_data\\match_list.pkl")
+            self.match_list_fill = pd.read_pickle("Data\\raw_data\\match_list_fill.pkl")
 
-        if cache_model:
-            team_match_list = pd.read_pickle("../Data/raw_data/team_match_list.pkl")
-            player_match_list = pd.read_pickle("../Data/raw_data/player_match_list.pkl")
-            self.regions_stats = pd.read_pickle("../Data/raw_data/regions_stats.pkl")
-
-            with open(f'../Data/raw_data/regions_feature_cols.json', 'r') as fp:
-                self.regions_feature_cols = json.load(fp)
-            with open(f'../Data/raw_data/regions_train_data.json', 'r') as fp:
-                self.regions_train_data = json.load(fp)
-        else:
             if self.FILL:
                 df_to_split = self.match_list_fill
             else:
                 df_to_split = self.match_list
 
-            player_match_list, team_match_list = self.split_match_list(df_to_split)
-        
-        return player_match_list, team_match_list
+            self.player_match_list, self.team_match_list = self.split_match_list(df_to_split)
+
+            if self.cache_model:
+                self.regions_stats = pd.read_pickle("Data/raw_data/regions_stats.pkl")
+
+                with open(f'Data/raw_data/regions_cache.json', 'r') as fp:
+                    regions_cache = json.load(fp)
+
+                self.regions_feature_cols = regions_cache['features']
+                self.regions_train_data = regions_cache['train_data']
 
     def split_match_list(self, df):
         matchListDateFilter = (df[df['Date'] >= pd.to_datetime('2019-7-01',format='%Y-%m-%d')]
@@ -148,6 +152,7 @@ class Utils_Class:
             ytest = testData[self.TARGET]
 
             trainData = df_temp[df_temp['tournamentId']!=tournament_id].copy()
+            trainData = trainData[trainData['realSemesterYear'].astype(int) < int(str(CURRENT_YEAR) + str(CURRENT_SEMESTER))]
             xtrain = trainData.drop(['Date',self.TARGET],axis=1).copy()
             xtrain = xtrain.drop(OFF_COLS,axis=1,errors='ignore')
             ytrain = trainData[self.TARGET]
@@ -198,11 +203,11 @@ class Utils_Class:
 
         regions = self.TARGET_DF['regionAbrev'].unique()
         regions_to_feed = [x for x in self.TARGET_DF['regionAbrev'].unique()]
-        regions_filter = ([x for x in regions if self.CURRENT_YEAR in (self.TARGET_DF[self.TARGET_DF['regionAbrev']==x])['realYear'].unique()
-                                                and self.CURRENT_YEAR-1 in (self.TARGET_DF[self.TARGET_DF['regionAbrev']==x])['realYear'].unique()])
+        regions_filter = ([x for x in regions if CURRENT_YEAR in (self.TARGET_DF[self.TARGET_DF['regionAbrev']==x])['realYear'].unique()
+                                                and CURRENT_YEAR-1 in (self.TARGET_DF[self.TARGET_DF['regionAbrev']==x])['realYear'].unique()])
         regions_to_predict = []
         for region in regions_filter:
-            regions_filter_size = len(self.TARGET_DF[(self.TARGET_DF['realYear']==self.CURRENT_YEAR) 
+            regions_filter_size = len(self.TARGET_DF[(self.TARGET_DF['realYear']==CURRENT_YEAR) 
                                                      & (self.TARGET_DF['regionAbrev']==region)])
             if regions_filter_size>=min_entries:
                 regions_to_predict.append(region)

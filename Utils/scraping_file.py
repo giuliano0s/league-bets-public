@@ -1,6 +1,6 @@
 ########====================================================IMPORTS====================================================########
 from Utils.constants import *
-from Utils.utils_file import Utils_Class
+import Utils.utils_file as utils_file
 
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -23,12 +23,12 @@ headers.update({"User-Agent": "Chrome/51.0.2704.103"})
 
 class Scraping_Class:
 
-    def __init__(self, year=CURRENT_YEAR, semester=CURRENT_SEMESTER, Utils=Utils_Class(), cache=True) -> None:
+    def __init__(self, year=CURRENT_YEAR, semester=CURRENT_SEMESTER, cache=True) -> None:
         self.current_year = year
         self.current_semester = 'Summer' if semester==1 else 'Spring'
-        self.all_tournaments = Utils.all_tournaments
-        self.Utils = Utils
-
+        self.Utils = utils_file.Utils_Class(cache_scraping=cache)
+        self.all_tournaments = self.Utils.all_tournaments
+        
         if cache:
             self.player_data_table = self.Utils.player_data_table
             self.team_data_table = self.Utils.team_data_table
@@ -137,10 +137,10 @@ class Scraping_Class:
                 playerDfFilter = playerDfFilter[(playerDfFilter['Year']>=year) 
                                                 & ((playerDfFilter['Year']<=year+1)
                                                 & (playerDfFilter['Semester']==0))]
-            newValue = np.mean(playerDfFilter[feature].tail(3))
+            newValue = np.nanmean(playerDfFilter[feature].tail(3))
             if not np.isnan(newValue):
                 self.cont.append(0)
-            print(f'nan vals removed: {len(self.cont)} index number: {round(index/len(df)*100,2)}%',end='\r')
+            print(f'nan vals removed: {len(self.cont)}',end='\r')
                 
             return newValue
         else:
@@ -150,24 +150,24 @@ class Scraping_Class:
         for col in df:
             df[col] = df[col].apply(lambda x: str(x).replace('%',''))
             df[col] = df[col].apply(lambda x: np.nan if ('-' in x and len(x)<2) else x )
+        df.columns = [x.replace(' ','_') for x in df.columns]
 
         df[PLAYER_FLOAT_COLS] = df[PLAYER_FLOAT_COLS].astype(float)
-        df[PLAYER_INT_COLS] = df[PLAYER_INT_COLS].fillna(0).astype(int)
-        df.columns = [x.replace(' ','_') for x in df.columns]
+        df[PLAYER_INT_COLS+['Year','Semester']] = df[PLAYER_INT_COLS+['Year','Semester']].astype(float)
 
         self.player_data_table = df
         return df
     
-    def transforming_team(self, df):
+    def transforming_team(self, df, updating=False):
         for col in df:
             df[col] = df[col].apply(lambda x: str(x).replace('%',''))
             df[col] = df[col].apply(lambda x: np.nan if ('-' in x and len(x)<2) else x )
+        df.columns = [x.replace(' ','_') for x in df.columns]
 
         df[TEAM_FLOAT_COLS] = df[TEAM_FLOAT_COLS].astype(float)
-        df[TEAM_INT_COLS] = df[TEAM_INT_COLS].fillna(0).astype(int)
+        df[TEAM_INT_COLS] = df[TEAM_INT_COLS].astype(float)
 
-        df['Game duration'] = pd.to_datetime(df['Game duration'], format='%H:%M:%S').dt.time
-        df.columns = [x.replace(' ','_') for x in df.columns]
+        df['Game_duration'] = pd.to_datetime(df['Game_duration'], format='%M:%S').dt.time
 
         df[ROLES] = 'sNaN'
         for i in range(len(df)):
@@ -181,10 +181,11 @@ class Scraping_Class:
             for name,val in zip(ROLES,allNames):
                 df[name][i] = val
 
-        self.team_data_table = df
+        if not updating:
+            self.team_data_table = df
         return df
     
-    def transforming_match(self, df):
+    def transforming_match(self, df, updating=False):
         df['StatsTemp'] = df['matchCode'].apply(lambda x: self.get_match_stats(x))
         df['blueKills'] = df['StatsTemp'].apply(lambda x: x[0])
         df['redKills'] = df['StatsTemp'].apply(lambda x: x[1])
@@ -196,10 +197,11 @@ class Scraping_Class:
 
         df['Score'] = df['Score'].apply(lambda x: self.score_select(x))
 
-        self.match_list = df
+        if not updating: 
+            self.match_list = df
         return df
     
-    def season_data_swap(self, df):
+    def season_data_swap(self, df, updating=False):
         
         df['Date'] = df['Date'].apply(lambda x: pd.to_datetime(x,format='%Y-%m-%d'))
         df['Semester'] = df['Date'].apply(lambda x: 0 if x.month <= 6 else 1)
@@ -222,13 +224,13 @@ class Scraping_Class:
             tempCols = [role+'_'+col for col in PLAYER_SIMPLE_FEATURE_COLS]
             df.drop(tempCols, inplace=True, errors='ignore', axis=1)
             
-            playerDataCols = ['Player','Year','Semester']
-            playerDataTableMerge = self.player_data_table[playerDataCols+PLAYER_SIMPLE_FEATURE_COLS]
+            player_data_cols = ['Player','Year','Semester']
+            player_data_table_merge = self.player_data_table[player_data_cols+PLAYER_SIMPLE_FEATURE_COLS]
             df = pd.merge(df,
-                            playerDataTableMerge,
+                            player_data_table_merge,
                             how='left',
                             left_on=[role,'Year','Semester'],
-                            right_on=playerDataCols)
+                            right_on=player_data_cols)
 
             renameCols = PLAYER_SIMPLE_FEATURE_COLS.copy()
             renameCols.append('Player')
@@ -240,43 +242,45 @@ class Scraping_Class:
         df.drop_duplicates(inplace=True)
         df.reset_index(drop=True,inplace=True)
 
-        self.match_list = df
+        if not updating:
+            self.match_list = df
         return df
     
-    def fill_nan_values_player(self, df):
+    def fill_nan_values_player(self, df, updating=False):
+        print('Filling NaN values:')
         self.cont = []
 
-        print(f'df size: {len(df)}')
         match_list_fill = df.reset_index().copy()
         match_list_fill.reset_index(drop=True,inplace=True)
         match_list_fill.columns = [x.replace(' ','_') for x in match_list_fill.columns]
-        oldNanSum = sum(match_list_fill.isna().sum())
 
         self.player_data_table.columns = [x.replace(' ','_') for x in self.player_data_table.columns]
 
+        old_nan_sum = match_list_fill.isna().sum().sum()
         for feature in PLAYER_SIMPLE_FEATURE_COLS:
             for role_side in ROLE_SIDE_COLS:
-                print('\n-',role_side+'_'+feature)
+
                 side = role_side.split('_')[1]
                 role = role_side.split('_')[0]
                 role_side_feature = role_side+'_'+feature
                 
-                print(f'\nold nan cont: {match_list_fill[role_side_feature].isna().sum()}')
+                
                 match_list_fill[role_side_feature] = match_list_fill['index'].apply(lambda indexl: self.fill_feature_player(match_list_fill
                                                                                                                             ,indexl
                                                                                                                             ,role
                                                                                                                             ,feature
                                                                                                                             ,side))
-                print(f'\nnew nan cont: {match_list_fill[role_side_feature].isna().sum()}')
-                newNanSum = sum(match_list_fill.isna().sum())
-                print(f'\nold nan sum: {oldNanSum}, new nan sum: {newNanSum}, diff: {oldNanSum-newNanSum}')
+
+        new_nan_sum = match_list_fill.isna().sum().sum()
+        print(f'\nold nan sum: {old_nan_sum}, new nan sum: {new_nan_sum}, diff: {old_nan_sum-new_nan_sum}')
                 
         match_list_fill.drop('index',inplace=True,axis=1)
 
         for col in match_list_fill.columns:
                         match_list_fill[col] = match_list_fill[col].fillna(0)
 
-        self.match_list_fill = match_list_fill
+        if not updating:
+            self.match_list_fill = match_list_fill
         return match_list_fill
     
 #%%================Table Scraping================###
@@ -310,9 +314,15 @@ class Scraping_Class:
         self.player_data_table = player_data_table
         return player_data_table
     
-    def make_matches_table(self):
+    def make_matches_table(self, updating=False):
+
+        if updating:
+            tournaments_to_scan = [x for x in self.Utils.all_tournaments if str(CURRENT_YEAR) in x]
+        else:
+            tournaments_to_scan = self.Utils.all_tournaments
+
         match_list = pd.DataFrame()
-        for tournament in self.Utils.all_tournaments:
+        for tournament in tournaments_to_scan:
             page = requests.get(f'https://gol.gg/tournament/tournament-matchlist/{tournament}/',headers=headers)
             bs = BeautifulSoup(page.content, 'lxml')
             linhas = bs.select("""a[href*='game/stats/']""")
@@ -355,15 +365,28 @@ class Scraping_Class:
         match_list = match_list.explode('matchCode')
         match_list.reset_index(drop=True,inplace=True)
         
-        self.match_list = match_list
+        if not updating:
+            self.match_list = match_list
         return match_list
     
-    def make_team_data_table(self):
+    def make_team_data_table(self, updating=False):
+        
+        if updating:
+            seasons_year_to_scan = [CURRENT_YEAR]
+            seasons_to_scan = [YEAR_TO_SEASON[CURRENT_YEAR]]
+            seasons_semester_to_scan = [CURRENT_SEMESTER]
+            seasons_split_to_scan = [SEMESTER_TO_SPLIT[CURRENT_SEMESTER]]
+        else:
+            seasons_year_to_scan = SEASONS_YEAR
+            seasons_to_scan = SEASONS
+            seasons_semester_to_scan = SEASONS_SEMESTER
+            seasons_split_to_scan = SEASONS_SPLIT
+
         team_data_table = pd.DataFrame()
-        for year,season in zip(SEASONS_YEAR,SEASONS):
+        for year,season in zip(seasons_year_to_scan, seasons_to_scan):
 
             team_data_table_temp = pd.DataFrame()
-            for semester,split in zip(SEASONS_SEMESTER,SEASONS_SPLIT):
+            for semester,split in zip(seasons_semester_to_scan, seasons_split_to_scan):
                 if not(year=='2023' and split=='Summer'):
 
                     teamsLink = f'https://gol.gg/teams/list/season-{season}/split-{split}/tournament-ALL/'
@@ -384,5 +407,47 @@ class Scraping_Class:
             team_data_table = pd.concat([team_data_table,team_data_table_temp])
             team_data_table.reset_index(drop=True,inplace=True)
 
-        self.team_data_table = team_data_table
+        if not updating:
+            self.team_data_table = team_data_table
+
         return team_data_table
+
+#%%================Update================###
+
+    def update(self, player_data=True, team_data=True, match_data=True):
+        print(f'Updating semester {CURRENT_SEMESTER} of year {CURRENT_YEAR}\n')
+        print('\n=============================\n')
+        if player_data:
+            self.make_player_data_table()
+            self.transforming_player(self.player_data_table)
+
+            self.player_data_table.to_pickle("Data/raw_data/player_data_table.pkl")
+            print('player_data_table updated!\n')
+
+        if team_data:
+            team_data_table_update = self.make_team_data_table(updating=True)
+            team_data_table_update = self.transforming_team(team_data_table_update, updating=True)
+            team_data_table_update = pd.concat([self.team_data_table, team_data_table_update])
+            subset_temp = [x for x in TEAM_INFO_COLS if x not in ROLES]
+            team_data_table_update.drop_duplicates(subset=subset_temp,inplace=True, keep='last')
+            self.team_data_table = team_data_table_update
+
+            self.team_data_table.to_pickle("Data/raw_data/team_data_table.pkl")
+            print('team_data_table updated!\n')
+
+        if match_data:
+            match_list_update = self.make_matches_table(updating=True)
+            match_list_update = self.transforming_match(match_list_update, updating=True)
+            match_list_update = pd.concat([self.match_list, match_list_update])
+            match_list_update.drop_duplicates(subset=['matchCode'],inplace=True, keep='last')
+            match_list_update = self.season_data_swap(match_list_update, updating=True)
+            self.match_list = match_list_update
+
+            match_list_update = self.fill_nan_values_player(match_list_update, updating=True)
+            self.match_list_fill = match_list_update
+
+            self.match_list.to_pickle("Data/raw_data/match_list.pkl")
+            self.match_list_fill.to_pickle("Data/raw_data/match_list_fill.pkl")
+            print('match_data updated!')
+
+

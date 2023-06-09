@@ -15,9 +15,14 @@ ALL_DATE_COLS = DATE_COLS + EXTRA_DATE_COLS
 CURRENT_YEAR = 2023
 CURRENT_SEMESTER = 1
 
+SEASON_TO_YEAR = dict(zip(SEASONS,SEASONS_YEAR))
+YEAR_TO_SEASON = dict(zip(SEASONS_YEAR, SEASONS))
+
+SEMESTER_TO_SPLIT = dict(zip(SEASONS_SEMESTER, SEASONS_SPLIT))
+SPLIT_TO_SEMESTER = dict(zip(SEASONS_SPLIT, SEASONS_SEMESTER))
+
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%_Targets_%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 TARGETS = ['Score','totalKills']
-
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%_Nominal_%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 ROLES = ['TOP','JNG','MID','ADC','SUP']
