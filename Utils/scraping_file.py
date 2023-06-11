@@ -291,21 +291,19 @@ class Scraping_Class:
             player_data_table_temp = pd.DataFrame()
             
             for semester,split in zip(SEASONS_SEMESTER,SEASONS_SPLIT):
-                if not (year==self.current_year and split==self.current_semester):
+                playersLink = f'https://gol.gg/players/list/season-{season}/split-{split}/tournament-ALL/'
+                page = requests.get(playersLink,headers=headers)
+                bs = BeautifulSoup(page.content, 'lxml')
+                linhas = bs.select("""a[href*='player-stats']""")
+                playersCode = [x['href'].split('/')[2] for x in linhas]
 
-                    playersLink = f'https://gol.gg/players/list/season-{season}/split-{split}/tournament-ALL/'
-                    page = requests.get(playersLink,headers=headers)
-                    bs = BeautifulSoup(page.content, 'lxml')
-                    linhas = bs.select("""a[href*='player-stats']""")
-                    playersCode = [x['href'].split('/')[2] for x in linhas]
+                player_data_table_temp2 = self.get_table(playersLink)
+                player_data_table_temp2['playerCode'] = playersCode
+                player_data_table_temp2['Semester'] = semester
+                player_data_table_temp2['Split'] = split
 
-                    player_data_table_temp2 = self.get_table(playersLink)
-                    player_data_table_temp2['playerCode'] = playersCode
-                    player_data_table_temp2['Semester'] = semester
-                    player_data_table_temp2['Split'] = split
-
-                    player_data_table_temp = pd.concat([player_data_table_temp,player_data_table_temp2])
-                    player_data_table_temp.reset_index(drop=True,inplace=True)
+                player_data_table_temp = pd.concat([player_data_table_temp,player_data_table_temp2])
+                player_data_table_temp.reset_index(drop=True,inplace=True)
                     
             player_data_table_temp['Year'] = year
             player_data_table = pd.concat([player_data_table,player_data_table_temp])
@@ -387,7 +385,6 @@ class Scraping_Class:
 
             team_data_table_temp = pd.DataFrame()
             for semester,split in zip(seasons_semester_to_scan, seasons_split_to_scan):
-                if not(year=='2023' and split=='Summer'):
 
                     teamsLink = f'https://gol.gg/teams/list/season-{season}/split-{split}/tournament-ALL/'
                     page = requests.get(teamsLink,headers=headers)
@@ -415,7 +412,7 @@ class Scraping_Class:
 #%%================Update================###
 
     def update(self, player_data=True, team_data=True, match_data=True):
-        print(f'Updating semester {CURRENT_SEMESTER} of year {CURRENT_YEAR}\n')
+        print(f'Updating semester {CURRENT_SEMESTER} of year {CURRENT_YEAR}')
         print('\n=============================\n')
         if player_data:
             self.make_player_data_table()
