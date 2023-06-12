@@ -110,11 +110,11 @@ class Utils_Class:
             self.all_tournaments.extend(tournament)
 
         if self.cache_scraping:
-            self.team_data_table = pd.read_pickle("Data/raw_data/team_data_table.pkl")
-            self.player_data_table = pd.read_pickle("Data/raw_data/player_data_table.pkl")
+            self.team_data_table = pd.read_pickle("Data/trated_data/team_data_table.pkl")
+            self.player_data_table = pd.read_pickle("Data/trated_data/player_data_table.pkl")
 
-            self.match_list = pd.read_pickle("Data/raw_data/match_list.pkl")
-            self.match_list_fill = pd.read_pickle("Data/raw_data/match_list_fill.pkl")
+            self.match_list = pd.read_pickle("Data/trated_data/match_list.pkl")
+            self.match_list_fill = pd.read_pickle("Data/trated_data/match_list_fill.pkl")
 
             if self.FILL:
                 df_to_split = self.match_list_fill
@@ -124,16 +124,17 @@ class Utils_Class:
             self.player_match_list, self.team_match_list = self.split_match_list(df_to_split)
 
             if self.cache_model:
-                self.regions_stats = pd.read_pickle("Data/raw_data/regions_stats.pkl")
+                if self.MODEL_TYPE!=None:
+                    self.regions_stats = pd.read_pickle(F"Data/cache/regions_stats_{CURRENT_YEAR_SEMESTER}_{self.MODEL_TYPE}.pkl")
 
-                with open(f'Data/raw_data/regions_cache.json', 'r') as fp:
-                    regions_cache = json.load(fp)
+                    with open(f'Data/raw_data/regions_cache.json', 'r') as fp:
+                        self.regions_cache = json.load(fp)
 
-                self.regions_feature_cols = regions_cache['features']
-                self.regions_train_data = regions_cache['train_data']
-
-                self.regions_feature_cols = regions_cache[tuple(CURRENT_YEAR_SEMESTER, 'train_data', 'logistic')]
-                self.regions_train_data = regions_cache[tuple(CURRENT_YEAR_SEMESTER, 'train_data', 'logistic')]
+                    try:
+                        self.regions_feature_cols = self.regions_cache[str([CURRENT_YEAR_SEMESTER, 'feature_cols', self.MODEL_TYPE])]
+                        self.regions_train_data = self.regions_cache[str([CURRENT_YEAR_SEMESTER, 'train_data', self.MODEL_TYPE])]
+                    except:
+                        print(f'No data found for season {CURRENT_YEAR_SEMESTER} and model {self.MODEL_TYPE}')
 
     def split_match_list(self, df):
         matchListDateFilter = (df[df['Date'] >= pd.to_datetime('2019-7-01',format='%Y-%m-%d')]
@@ -195,6 +196,8 @@ class Utils_Class:
     def make_pred(self, model_number, reps, xtrain, ytrain, xtest, ytest):
 
         errors=0
+        if self.MODEL_TYPE == 'logistic':
+            threshold = self.logistic_threshold
         region_model = self.BASE_MODELS[model_number]
         region_model.fit(xtrain, ytrain)
         
@@ -211,15 +214,23 @@ class Utils_Class:
                 pred = pred[:,1]
                 prediction_df = pd.DataFrame([pred, ytest]).transpose()
                 oldlen = len(prediction_df)
-                prediction_df = prediction_df[(prediction_df[0]>0.70)
-                                                | (prediction_df[0]<0.30)].reset_index(drop=True)
+                prediction_df = prediction_df[(prediction_df[0]>abs(threshold-1))
+                                                | (prediction_df[0]<threshold)].reset_index(drop=True)
                 prediction_df = prediction_df.round()
                 newlen = len(prediction_df)
-                errors = skm.mean_absolute_error(prediction_df[0], prediction_df[1])+errors
+                try:
+                    errors = skm.mean_absolute_error(prediction_df[0], prediction_df[1])+errors
+                except:
+                    errors = 1+errors
+                    print('no data left after filtering')
 
-            self.len_lost = (oldlen-newlen)/oldlen
+            self.len_lost = round((oldlen-newlen)/oldlen,2)
             errors_final=errors/reps
             metric=round(abs(errors_final),3)
+
+        elif self.MODEL_TYPE=='regression':
+            for i in range(reps):
+                pass
 
         return metric, pred
     
@@ -228,14 +239,17 @@ class Utils_Class:
         df_temp = self.TARGET_DF[self.TARGET_DF['regionAbrev'].isin(region_data_list)].copy()
         temp_cols = [x for x in list(df_temp.columns) if x.replace('Team_Red_','').replace('Team_Blue_','') in region_feature_cols]
         df_temp = df_temp[temp_cols+self.INFO_COLS]
-        #df_temp = df_temp.sort_values(by='Date',ascending=True).copy()
         
         xtrain, ytrain, xtest, ytest = self.train_test_split_region(df_temp, region, verbose=False)
         self.train_len = len(xtrain)
 
-        #tournament_id = region + str(self.LAST_SEMESTER_YEAR)
-
-        metric, pred = self.make_pred(model_number, reps, xtrain, ytrain, xtest, ytest)
+        if len(ytrain.unique())>1:
+            metric, pred = self.make_pred(model_number, reps, xtrain, ytrain, xtest, ytest)
+        else:
+            metric = 1
+            print('only one class found')
+            print(f'ytrain len: {len(ytrain)}')
+            print(f'list of data used: {region_data_list}')
         
         return metric, pred
 
@@ -251,3 +265,16 @@ class Utils_Class:
 
        
        return regions_to_feed, regions_to_predict
+    
+    def save_model_cache(self, regions_stats, regions_feature_cols, regions_train_data):
+
+        regions_cache = self.regions_cache
+        regions_cache[str([CURRENT_YEAR_SEMESTER, 'feature_cols', self.MODEL_TYPE])] = regions_feature_cols
+        regions_cache[str([CURRENT_YEAR_SEMESTER, 'train_data', self.MODEL_TYPE])] = regions_train_data
+
+        with open(f'Data/cache/regions_cache.json', 'w') as fp:
+            json.dump(regions_cache, fp)
+
+        regions_stats.to_pickle(f"Data/cache/regions_stats_{CURRENT_YEAR_SEMESTER}_{self.MODEL_TYPE}.pkl")
+
+        print('Cache saved!')

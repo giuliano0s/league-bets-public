@@ -78,11 +78,9 @@ class Scraping_Class:
         blueScore = int(score[0])
         redScore = int(score[-1])
         
-        finalScore = blueScore-redScore
-        
-        if finalScore < 0:
+        if blueScore < redScore:
             return 1
-        elif finalScore > 0:
+        elif redScore > blueScore:
             return 0
         else:
             return 2
@@ -102,7 +100,7 @@ class Scraping_Class:
         if any(y in tournamentSplit for y in ['Finals','Playoffs']) in tournamentSplit:
             region = region+'_Playoffs'
 
-        if any(y in tournamentSplit for y in ['Proving','Div','Academy','Hitpoint','Elite']):
+        if any(y in tournamentSplit for y in ['Proving','Div','Academy','Hitpoint','Elite','CL']):
             region = region+'_Tier2'
             
         return region
@@ -418,7 +416,7 @@ class Scraping_Class:
             self.make_player_data_table()
             self.transforming_player(self.player_data_table)
 
-            self.player_data_table.to_pickle("Data/raw_data/player_data_table.pkl")
+            self.player_data_table.to_pickle("Data/trated_data/player_data_table.pkl")
             print('player_data_table updated!\n')
 
         if team_data:
@@ -429,7 +427,7 @@ class Scraping_Class:
             team_data_table_update.drop_duplicates(subset=subset_temp,inplace=True, keep='last')
             self.team_data_table = team_data_table_update
 
-            self.team_data_table.to_pickle("Data/raw_data/team_data_table.pkl")
+            self.team_data_table.to_pickle("Data/trated_data/team_data_table.pkl")
             print('team_data_table updated!\n')
 
         if match_data:
@@ -443,8 +441,8 @@ class Scraping_Class:
             match_list_update = self.fill_nan_values_player(match_list_update, updating=True)
             self.match_list_fill = match_list_update
 
-            self.match_list.to_pickle("Data/raw_data/match_list.pkl")
-            self.match_list_fill.to_pickle("Data/raw_data/match_list_fill.pkl")
+            self.match_list.to_pickle("Data/trated_data/match_list.pkl")
+            self.match_list_fill.to_pickle("Data/trated_data/match_list_fill.pkl")
             print('match_data updated!')
 
 
