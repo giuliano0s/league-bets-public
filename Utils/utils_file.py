@@ -110,11 +110,11 @@ class Utils_Class:
             self.all_tournaments.extend(tournament)
 
         if self.cache_scraping:
-            self.team_data_table = pd.read_pickle("Data/trated_data/team_data_table.pkl")
-            self.player_data_table = pd.read_pickle("Data/trated_data/player_data_table.pkl")
+            self.team_data_table = pd.read_pickle("Data/treated_data/team_data_table.pkl")
+            self.player_data_table = pd.read_pickle("Data/treated_data/player_data_table.pkl")
 
-            self.match_list = pd.read_pickle("Data/trated_data/match_list.pkl")
-            self.match_list_fill = pd.read_pickle("Data/trated_data/match_list_fill.pkl")
+            self.match_list = pd.read_pickle("Data/treated_data/match_list.pkl")
+            self.match_list_fill = pd.read_pickle("Data/treated_data/match_list_fill.pkl")
 
             if self.FILL:
                 df_to_split = self.match_list_fill
@@ -127,7 +127,7 @@ class Utils_Class:
                 if self.MODEL_TYPE!=None:
                     self.regions_stats = pd.read_pickle(F"Data/cache/regions_stats_{CURRENT_YEAR_SEMESTER}_{self.MODEL_TYPE}.pkl")
 
-                    with open(f'Data/raw_data/regions_cache.json', 'r') as fp:
+                    with open(f'Data/cache/regions_cache.json', 'r') as fp:
                         self.regions_cache = json.load(fp)
 
                     try:
