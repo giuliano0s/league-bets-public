@@ -9,11 +9,11 @@ SEASONS_YEAR = [2019,2020,2021,2022,2023]
 SEASONS_SEMESTER = [0,1]
 SEASONS_SPLIT = ['Spring','Summer']
 DATE_COLS = ['Semester','Year','Split']
-EXTRA_DATE_COLS = ['realSemester', 'realYear','realSemesterYear']
+EXTRA_DATE_COLS = ['realSemester', 'realYear','realSemesterYear', 'semesterYear']
 ALL_DATE_COLS = DATE_COLS + EXTRA_DATE_COLS
 
 CURRENT_YEAR = 2023
-CURRENT_SEMESTER = 1
+CURRENT_SEMESTER = 0
 CURRENT_YEAR_SEMESTER = str(CURRENT_YEAR) + str(CURRENT_SEMESTER)
 
 SEASON_TO_YEAR = dict(zip(SEASONS,SEASONS_YEAR))

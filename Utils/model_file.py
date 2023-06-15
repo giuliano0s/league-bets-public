@@ -92,15 +92,15 @@ class Final_Model_Class:
 
     def print_team_players(self):
         playerNames = self.Utils.team_data_table[(self.Utils.team_data_table['Name']==self.teams_dict[self.blue_team])
-                                                & (self.Utils.team_data_table['Year'].astype(int)==self.Utils.LAST_YEAR)
-                                                & (self.Utils.team_data_table['Semester'].astype(int)==self.Utils.LAST_SEMESTER)][['TOP','JNG','MID','ADC','SUP']]
+                                                & (self.Utils.team_data_table['Year'].astype(int)==CURRENT_YEAR)
+                                                & (self.Utils.team_data_table['Semester'].astype(int)==CURRENT_SEMESTER)][['TOP','JNG','MID','ADC','SUP']]
 
         try: print(f'team_blue_list = {list(playerNames.values[0])}')
         except: print('no team found')
 
         playerNames = self.Utils.team_data_table[(self.Utils.team_data_table['Name']==self.teams_dict[self.red_team])
-                                                & (self.Utils.team_data_table['Year'].astype(int)==self.Utils.LAST_YEAR)
-                                                & (self.Utils.team_data_table['Semester'].astype(int)==self.Utils.LAST_SEMESTER)][['TOP','JNG','MID','ADC','SUP']]
+                                                & (self.Utils.team_data_table['Year'].astype(int)==CURRENT_YEAR)
+                                                & (self.Utils.team_data_table['Semester'].astype(int)==CURRENT_SEMESTER)][['TOP','JNG','MID','ADC','SUP']]
 
         try:print(f'team_red_list = {list(playerNames.values[0])}')
         except: print('no team found')

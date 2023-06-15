@@ -83,7 +83,20 @@ class Utils_Class:
                                 ]
         elif model_type=='logistic':
             self.BASE_MODELS = [
-                                LogisticRegression(solver='newton-cg') #0
+                                LogisticRegression(solver='newton-cg', penalty=None) #0
+                                ,LogisticRegression(solver='newton-cg') #1
+                                ,LogisticRegression() #2
+                                ,LogisticRegression(penalty=None) #3
+                                ,LogisticRegression(solver='liblinear') #4
+                                ,LogisticRegression(solver='liblinear', penalty='l1') #5
+                                ,LogisticRegression(solver='newton-cholesky') #6
+                                ,LogisticRegression(solver='newton-cholesky', penalty=None) #7
+                                ,LogisticRegression(solver='sag') #8
+                                ,LogisticRegression(solver='sag', penalty=None) #9
+                                ,LogisticRegression(solver='saga') #9
+                                #,LogisticRegression(solver='saga', penalty='elasticnet') #10
+                                ,LogisticRegression(solver='saga', penalty='l1') #11
+                                ,LogisticRegression(solver='saga', penalty=None) #12
                                 ]
         elif model_type=='regression':
             self.BASE_MODELS = [
@@ -109,12 +122,22 @@ class Utils_Class:
         for tournament in tournaments_list:
             self.all_tournaments.extend(tournament)
 
-        if self.cache_scraping:
-            self.team_data_table = pd.read_pickle("Data/trated_data/team_data_table.pkl")
-            self.player_data_table = pd.read_pickle("Data/trated_data/player_data_table.pkl")
+        with open(f'Data/cache/regions_cache.json', 'r') as fp:
+            self.regions_cache = json.load(fp)
 
-            self.match_list = pd.read_pickle("Data/trated_data/match_list.pkl")
-            self.match_list_fill = pd.read_pickle("Data/trated_data/match_list_fill.pkl")
+        if self.MODEL_TYPE!=None:
+            try:
+                self.regions_feature_cols = self.regions_cache[str([CURRENT_YEAR_SEMESTER, 'feature_cols', self.MODEL_TYPE])]
+                self.regions_train_data = self.regions_cache[str([CURRENT_YEAR_SEMESTER, 'train_data', self.MODEL_TYPE])]
+            except:
+                print(f'No data found for season {CURRENT_YEAR_SEMESTER} and model {self.MODEL_TYPE}')
+            
+        if self.cache_scraping:
+            self.team_data_table = pd.read_pickle("Data/treated_data/team_data_table.pkl")
+            self.player_data_table = pd.read_pickle("Data/treated_data/player_data_table.pkl")
+
+            self.match_list = pd.read_pickle("Data/treated_data/match_list.pkl")
+            self.match_list_fill = pd.read_pickle("Data/treated_data/match_list_fill.pkl")
 
             if self.FILL:
                 df_to_split = self.match_list_fill
@@ -124,21 +147,15 @@ class Utils_Class:
             self.player_match_list, self.team_match_list = self.split_match_list(df_to_split)
 
             if self.cache_model:
-                if self.MODEL_TYPE!=None:
+                try:
                     self.regions_stats = pd.read_pickle(F"Data/cache/regions_stats_{CURRENT_YEAR_SEMESTER}_{self.MODEL_TYPE}.pkl")
-
-                    with open(f'Data/raw_data/regions_cache.json', 'r') as fp:
-                        self.regions_cache = json.load(fp)
-
-                    try:
-                        self.regions_feature_cols = self.regions_cache[str([CURRENT_YEAR_SEMESTER, 'feature_cols', self.MODEL_TYPE])]
-                        self.regions_train_data = self.regions_cache[str([CURRENT_YEAR_SEMESTER, 'train_data', self.MODEL_TYPE])]
-                    except:
-                        print(f'No data found for season {CURRENT_YEAR_SEMESTER} and model {self.MODEL_TYPE}')
+                except:
+                    print('Cannot read regions_stats')
 
     def split_match_list(self, df):
-        matchListDateFilter = (df[df['Date'] >= pd.to_datetime('2019-7-01',format='%Y-%m-%d')]
-                                            .reset_index(drop=True).copy())
+        # matchListDateFilter = (df[df['Date'] >= pd.to_datetime('2019-7-01',format='%Y-%m-%d')]
+        #                                     .reset_index(drop=True).copy())
+        matchListDateFilter = df.copy()
         
         playerMatchList = matchListDateFilter.copy()
         teamMatchList = matchListDateFilter.copy()
@@ -198,6 +215,7 @@ class Utils_Class:
         errors=0
         if self.MODEL_TYPE == 'logistic':
             threshold = self.logistic_threshold
+
         region_model = self.BASE_MODELS[model_number]
         region_model.fit(xtrain, ytrain)
         
@@ -247,6 +265,7 @@ class Utils_Class:
             metric, pred = self.make_pred(model_number, reps, xtrain, ytrain, xtest, ytest)
         else:
             metric = 1
+            pred = []
             print('only one class found')
             print(f'ytrain len: {len(ytrain)}')
             print(f'list of data used: {region_data_list}')
@@ -278,3 +297,25 @@ class Utils_Class:
         regions_stats.to_pickle(f"Data/cache/regions_stats_{CURRENT_YEAR_SEMESTER}_{self.MODEL_TYPE}.pkl")
 
         print('Cache saved!')
+
+    def bet_ratio_vars(self, result=None, ratio=None, chance=None):
+        if result==None:
+            result = chance*(1-(1-ratio)) - (1-chance) - 1
+            print(f'Expected result: {result}')
+
+        elif ratio==None:
+            ratio = (result + (1-chance) + 1)/chance
+            print(f'Expected ratio: {ratio}')
+        
+        elif chance==None:
+            chance_range = np.arange(0, 1, 0.05)
+            true_range = [(chance*(1-(1-ratio)) - (1-chance) - 1) > 0 for chance in chance_range]
+            range_df = pd.DataFrame([chance_range,true_range])
+            range_df = range_df[range_df.columns[range_df.iloc[1]==True]]
+
+            min_chance = round(range_df.iloc[0].min(),3)
+            result_min = round(min_chance*(1-(1-ratio)) - (1-min_chance) - 1,3)
+
+            print(f'Min chance: {min_chance}')
+            print(f'Result on min chance: {result_min}')
+            #print(f'Range df:\n{range_df}')

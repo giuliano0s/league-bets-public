@@ -28,6 +28,8 @@ class Scraping_Class:
         self.current_semester = 'Summer' if semester==1 else 'Spring'
         self.Utils = utils_file.Utils_Class(cache_scraping=cache)
         self.all_tournaments = self.Utils.all_tournaments
+        from datetime import datetime
+        self.date = datetime.now()
         
         if cache:
             self.player_data_table = self.Utils.player_data_table
@@ -78,12 +80,19 @@ class Scraping_Class:
         blueScore = int(score[0])
         redScore = int(score[-1])
         
-        if blueScore < redScore:
-            return 1
-        elif redScore > blueScore:
-            return 0
+        finalScore = blueScore-redScore
+
+        if finalScore < 0:
+            ret = 1
+        elif finalScore > 0:
+            ret = 0
         else:
-            return 2
+            ret = 2
+        
+        if ret==2:
+            print(f"blue score: {blueScore}, red score: {redScore}, final score: {finalScore}")
+
+        return ret
 
     def find_region_tournament(self, tournament):
         tournamentSplit = tournament.split('%20')
@@ -202,8 +211,8 @@ class Scraping_Class:
     def season_data_swap(self, df, updating=False):
         
         df['Date'] = df['Date'].apply(lambda x: pd.to_datetime(x,format='%Y-%m-%d'))
-        df['Semester'] = df['Date'].apply(lambda x: 0 if x.month <= 6 else 1)
-        df['Split'] = df['Date'].apply(lambda x: 'Spring' if x.month <= 6 else 'Summer')
+        df['Semester'] = df['Date'].apply(lambda x: 0 if x.month <= 5 else 1)
+        df['Split'] = df['Date'].apply(lambda x: 'Spring' if x.month <= 5 else 'Summer')
         df['Year'] = df['Date'].apply(lambda x: x.year)
 
         df['realSemester'] = df['Semester']
@@ -313,7 +322,10 @@ class Scraping_Class:
     def make_matches_table(self, updating=False):
 
         if updating:
+            season_to_scrap = 'Summer' if CURRENT_SEMESTER==1 else 'Spring'
             tournaments_to_scan = [x for x in self.Utils.all_tournaments if str(CURRENT_YEAR) in x]
+            print(f'Tournaments to scan: {len(tournaments_to_scan)}')
+            #tournaments_to_scan = [x for x in self.Utils.all_tournaments if season_to_scrap in x]
         else:
             tournaments_to_scan = self.Utils.all_tournaments
 
@@ -406,6 +418,7 @@ class Scraping_Class:
             self.team_data_table = team_data_table
 
         return team_data_table
+    
 
 #%%================Update================###
 
@@ -416,7 +429,7 @@ class Scraping_Class:
             self.make_player_data_table()
             self.transforming_player(self.player_data_table)
 
-            self.player_data_table.to_pickle("Data/trated_data/player_data_table.pkl")
+            self.player_data_table.to_pickle("Data/treated_data/player_data_table.pkl")
             print('player_data_table updated!\n')
 
         if team_data:
@@ -424,25 +437,27 @@ class Scraping_Class:
             team_data_table_update = self.transforming_team(team_data_table_update, updating=True)
             team_data_table_update = pd.concat([self.team_data_table, team_data_table_update])
             subset_temp = [x for x in TEAM_INFO_COLS if x not in ROLES]
-            team_data_table_update.drop_duplicates(subset=subset_temp,inplace=True, keep='last')
+            team_data_table_update.drop_duplicates(subset=subset_temp, inplace=True, keep='last')
             self.team_data_table = team_data_table_update
 
-            self.team_data_table.to_pickle("Data/trated_data/team_data_table.pkl")
+            self.team_data_table.to_pickle("Data/treated_data/team_data_table.pkl")
             print('team_data_table updated!\n')
 
         if match_data:
             match_list_update = self.make_matches_table(updating=True)
             match_list_update = self.transforming_match(match_list_update, updating=True)
+            
             match_list_update = pd.concat([self.match_list, match_list_update])
             match_list_update.drop_duplicates(subset=['matchCode'],inplace=True, keep='last')
+
             match_list_update = self.season_data_swap(match_list_update, updating=True)
             self.match_list = match_list_update
 
             match_list_update = self.fill_nan_values_player(match_list_update, updating=True)
             self.match_list_fill = match_list_update
 
-            self.match_list.to_pickle("Data/trated_data/match_list.pkl")
-            self.match_list_fill.to_pickle("Data/trated_data/match_list_fill.pkl")
+            self.match_list.to_pickle("Data/treated_data/match_list.pkl")
+            self.match_list_fill.to_pickle("Data/treated_data/match_list_fill.pkl")
             print('match_data updated!')
 
 
