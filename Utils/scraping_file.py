@@ -88,9 +88,6 @@ class Scraping_Class:
             ret = 0
         else:
             ret = 2
-        
-        if ret==2:
-            print(f"blue score: {blueScore}, red score: {redScore}, final score: {finalScore}")
 
         return ret
 
@@ -184,7 +181,9 @@ class Scraping_Class:
             page = requests.get(f'https://gol.gg/teams/team-stats/{code}/split-{split}/tournament-ALL/',headers=headers)
             tables = pd.read_html(page.text)[-1]
             
-            allNames = tables['Player'][1:6]
+            allNames = tables['Player'][0:6]
+            allNames = [x for x in allNames if x not in ['Last line-up','sNaN']]
+            
             for name,val in zip(ROLES,allNames):
                 df[name][i] = val
 
@@ -444,15 +443,20 @@ class Scraping_Class:
             print('team_data_table updated!\n')
 
         if match_data:
+            print('match_data checkpoint 1')
             match_list_update = self.make_matches_table(updating=True)
             match_list_update = self.transforming_match(match_list_update, updating=True)
             
+            print('match_data checkpoint 2')
             match_list_update = pd.concat([self.match_list, match_list_update])
             match_list_update.drop_duplicates(subset=['matchCode'],inplace=True, keep='last')
 
+            print('match_data checkpoint 2')
             match_list_update = self.season_data_swap(match_list_update, updating=True)
+            match_list_update['is_playoffs'] = match_list_update['Tournament'].apply(lambda x: True if 'Playoffs' in x else False)
             self.match_list = match_list_update
 
+            print('match_data checkpoint 3')
             match_list_update = self.fill_nan_values_player(match_list_update, updating=True)
             self.match_list_fill = match_list_update
 

@@ -76,19 +76,18 @@ class Final_Model_Class:
 
 #%%================Print================###
 
-    def print_region_teams(self, region=None):
-        if self.region == None:
-            self.region = region
-        elif region != None:
-            region = self.region
-        else: 
+    def get_region_teams(self, region=None, verbose=True):
+        self.region = region
+        if region==None:
             raise Exception("Specify a region!")
 
         dfTemp = self.Utils.TARGET_DF[self.Utils.TARGET_DF['regionAbrev']==region]
         teamsSet = sorted(set(list(dfTemp['Blue'].unique())+list(dfTemp['Red'].unique())))
         teamsDict = dict(zip(range(len(teamsSet)),teamsSet))
         self.teams_dict = teamsDict
-        print(teamsDict)
+        if verbose:
+            for x,n in zip(teamsDict,teamsDict.values()):
+                print(f'{n}: {x}')
 
     def print_team_players(self):
         playerNames = self.Utils.team_data_table[(self.Utils.team_data_table['Name']==self.teams_dict[self.blue_team])
@@ -108,14 +107,11 @@ class Final_Model_Class:
  #%%================Model================###
    
     def make_prediction(self, manual_insert=False, team_blue_list=None, team_red_list=None):
-        print(f'last train data: {self.last_game_date}')
-
         self.team_blue_list = team_blue_list
         self.team_red_list = team_red_list
         self.manual_insert = manual_insert
 
         for i in range(1):
-            print('=================')
 
             if self.manual_insert:
                 self.team_blue_names = self.team_blue_list

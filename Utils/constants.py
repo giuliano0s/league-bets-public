@@ -7,13 +7,16 @@ ROOT_DIR = os.path.dirname(os.path.abspath('requirements.txt'))
 SEASONS = ['S9','S10','S11','S12','S13']
 SEASONS_YEAR = [2019,2020,2021,2022,2023]
 SEASONS_SEMESTER = [0,1]
+SEMESTER_YEARS = [str(x)+str(y) for x in SEASONS_YEAR for y in SEASONS_SEMESTER]
+SEASONS_NUM = [*range(len(SEMESTER_YEARS))]
 SEASONS_SPLIT = ['Spring','Summer']
+
 DATE_COLS = ['Semester','Year','Split']
 EXTRA_DATE_COLS = ['realSemester', 'realYear','realSemesterYear', 'semesterYear']
 ALL_DATE_COLS = DATE_COLS + EXTRA_DATE_COLS
 
-CURRENT_YEAR = 2023
-CURRENT_SEMESTER = 0
+CURRENT_YEAR = 2022
+CURRENT_SEMESTER = 1
 CURRENT_YEAR_SEMESTER = str(CURRENT_YEAR) + str(CURRENT_SEMESTER)
 
 SEASON_TO_YEAR = dict(zip(SEASONS,SEASONS_YEAR))
@@ -21,6 +24,9 @@ YEAR_TO_SEASON = dict(zip(SEASONS_YEAR, SEASONS))
 
 SEMESTER_TO_SPLIT = dict(zip(SEASONS_SEMESTER, SEASONS_SPLIT))
 SPLIT_TO_SEMESTER = dict(zip(SEASONS_SPLIT, SEASONS_SEMESTER))
+
+SY_TO_SN = dict(zip(SEMESTER_YEARS, SEASONS_NUM))
+SN_TO_SY = dict(zip(SEASONS_NUM, SEMESTER_YEARS))
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%_Targets_%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 TARGETS = ['Score','totalKills']

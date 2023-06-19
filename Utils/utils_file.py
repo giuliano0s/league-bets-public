@@ -49,14 +49,11 @@ class Utils_Class:
         self.YEAR = year
         self.SEMESTER = semester
         self.SEMESTER_YEAR = str(self.YEAR)+str(self.SEMESTER)
+        self.SEASON_NUM = SY_TO_SN[self.SEMESTER_YEAR]
 
         self.LAST_SEMESTER = abs(self.SEMESTER-1)
         self.LAST_YEAR = self.YEAR-1 if self.LAST_SEMESTER==1 else self.YEAR
         self.LAST_SEMESTER_YEAR = str(self.LAST_YEAR)+str(self.LAST_SEMESTER)
-
-        self.LAST_LAST_SEMESTER = abs(self.LAST_SEMESTER-1)
-        self.LAST_LAST_YEAR = self.LAST_YEAR-1 if self.LAST_LAST_SEMESTER==1 else self.LAST_YEAR
-        self.LAST_LAST_SEMESTER_YEAR = str(self.LAST_LAST_YEAR)+str(self.LAST_LAST_SEMESTER)
 
         self.SPLIT_TYPE = split_type
 
@@ -173,17 +170,20 @@ class Utils_Class:
         return playerMatchList, teamMatchList
     
     def train_test_split_region(self, df_temp, region, verbose=True):
-        
         if self.SPLIT_TYPE==0:
             testData = df_temp[(df_temp['regionAbrev']==region)
-                               & (df_temp['realSemesterYear'].isin([self.LAST_SEMESTER_YEAR, self.LAST_LAST_SEMESTER_YEAR]))].copy()
+                               & (df_temp['realSemesterYear'].isin([SN_TO_SY[self.SEASON_NUM-4], SN_TO_SY[self.SEASON_NUM-3]
+                                                                    , SN_TO_SY[self.SEASON_NUM-2], SN_TO_SY[self.SEASON_NUM-1]]))].copy()
 
             xtest= testData.drop(['Date',self.TARGET],axis=1).copy()
             xtest= xtest.drop(OFF_COLS,axis=1,errors='ignore')
             ytest = testData[self.TARGET]
 
-            trainData = df_temp[(df_temp['regionAbrev']!=region)
-                               | (df_temp['realSemesterYear'].astype(int) < int(self.LAST_LAST_SEMESTER_YEAR))].copy()
+            trainData = df_temp[((df_temp['regionAbrev']!=region)
+                               & (df_temp['realSemesterYear'].astype(int) < int(SN_TO_SY[self.SEASON_NUM-1])))
+                               |
+                               ((df_temp['regionAbrev']==region)
+                               & (df_temp['realSemesterYear'].astype(int) < int(SN_TO_SY[self.SEASON_NUM-4])))].copy()
             
             xtrain = trainData.drop(['Date',self.TARGET],axis=1).copy()
             xtrain = xtrain.drop(OFF_COLS,axis=1,errors='ignore')
@@ -217,10 +217,10 @@ class Utils_Class:
             threshold = self.logistic_threshold
 
         region_model = self.BASE_MODELS[model_number]
-        region_model.fit(xtrain, ytrain)
         
         if self.MODEL_TYPE=='binary':
             for i in range(reps):
+                region_model.fit(xtrain, ytrain)
                 pred = region_model.predict(xtest)
                 errors = accuracy_score(ytest, pred)+errors
             errors_final=errors/reps
@@ -228,6 +228,7 @@ class Utils_Class:
 
         elif self.MODEL_TYPE=='logistic':
             for i in range(reps):
+                region_model.fit(xtrain, ytrain)
                 pred = region_model.predict_proba(xtest)
                 pred = pred[:,1]
                 prediction_df = pd.DataFrame([pred, ytest]).transpose()
@@ -242,6 +243,27 @@ class Utils_Class:
                     errors = 1+errors
                     print('no data left after filtering')
 
+            df_temp = pd.DataFrame(dict({'predicted':pred,'true':ytest}))
+            perc_val_df = df_temp
+
+            perc_val_df['round'] = perc_val_df['predicted'].round().astype(int)
+            perc_val_df['result'] = (perc_val_df['true'] == perc_val_df['round']).replace({True:1,False:0})
+            perc_val_df['predicted'] = perc_val_df['predicted'].apply(lambda x: 1-x if x<0.5 else x)
+            perc_val_result_df = pd.DataFrame()
+            for x in np.arange(0.5,0.9,0.1):
+                threshold2 = round(x,2)
+                test_df = perc_val_df[(perc_val_df['predicted']>=threshold2)
+                                            & (perc_val_df['predicted']<=threshold2+0.1)]
+                if len(test_df.result.unique())>1:
+                    result = round(test_df.result.value_counts()[1]/len(test_df),2)
+                    perc_val_result_df = perc_val_result_df.append(pd.Series([round(threshold2,2), result, len(test_df)]), ignore_index=True)
+
+            perc_val_result_df.columns = ['threshold','result','len']
+            perc_val_result_df['diff'] = perc_val_result_df['result'] - perc_val_result_df['threshold']
+            len_bad_diffs = (perc_val_result_df[perc_val_result_df['diff']<-0.05])['diff']
+            #print(f'bad diff percentage: {len(len_bad_diffs)/len(perc_val_result_df)}')
+            #print(f'bad diff mean: {round(np.mean(len_bad_diffs),2)}')
+
             self.len_lost = round((oldlen-newlen)/oldlen,2)
             errors_final=errors/reps
             metric=round(abs(errors_final),3)
@@ -255,6 +277,7 @@ class Utils_Class:
     def generate_metric(self, model_number, region_feature_cols, region_data_list, region, reps):
         
         df_temp = self.TARGET_DF[self.TARGET_DF['regionAbrev'].isin(region_data_list)].copy()
+        df_temp = df_temp[df_temp['is_playoffs']==False]
         temp_cols = [x for x in list(df_temp.columns) if x.replace('Team_Red_','').replace('Team_Blue_','') in region_feature_cols]
         df_temp = df_temp[temp_cols+self.INFO_COLS]
         
@@ -270,7 +293,7 @@ class Utils_Class:
             print(f'ytrain len: {len(ytrain)}')
             print(f'list of data used: {region_data_list}')
         
-        return metric, pred
+        return metric, pred, ytest
 
     def region_lists(self):
 
