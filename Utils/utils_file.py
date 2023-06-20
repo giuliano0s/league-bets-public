@@ -242,27 +242,28 @@ class Utils_Class:
                 except:
                     errors = 1+errors
                     print('no data left after filtering')
+#%%
+            # df_temp = pd.DataFrame(dict({'predicted':pred,'true':ytest}))
+            # perc_val_df = df_temp
 
-            df_temp = pd.DataFrame(dict({'predicted':pred,'true':ytest}))
-            perc_val_df = df_temp
+            # perc_val_df['round'] = perc_val_df['predicted'].round().astype(int)
+            # perc_val_df['result'] = (perc_val_df['true'] == perc_val_df['round']).replace({True:1,False:0})
+            # perc_val_df['predicted'] = perc_val_df['predicted'].apply(lambda x: 1-x if x<0.5 else x)
+            # perc_val_result_df = pd.DataFrame()
+            # for x in np.arange(0.5,0.9,0.1):
+            #     threshold2 = round(x,2)
+            #     test_df = perc_val_df[(perc_val_df['predicted']>=threshold2)
+            #                                 & (perc_val_df['predicted']<=threshold2+0.1)]
+            #     if len(test_df.result.unique())>1:
+            #         result = round(test_df.result.value_counts()[1]/len(test_df),2)
+            #         perc_val_result_df = perc_val_result_df.append(pd.Series([round(threshold2,2), result, len(test_df)]), ignore_index=True)
 
-            perc_val_df['round'] = perc_val_df['predicted'].round().astype(int)
-            perc_val_df['result'] = (perc_val_df['true'] == perc_val_df['round']).replace({True:1,False:0})
-            perc_val_df['predicted'] = perc_val_df['predicted'].apply(lambda x: 1-x if x<0.5 else x)
-            perc_val_result_df = pd.DataFrame()
-            for x in np.arange(0.5,0.9,0.1):
-                threshold2 = round(x,2)
-                test_df = perc_val_df[(perc_val_df['predicted']>=threshold2)
-                                            & (perc_val_df['predicted']<=threshold2+0.1)]
-                if len(test_df.result.unique())>1:
-                    result = round(test_df.result.value_counts()[1]/len(test_df),2)
-                    perc_val_result_df = perc_val_result_df.append(pd.Series([round(threshold2,2), result, len(test_df)]), ignore_index=True)
-
-            perc_val_result_df.columns = ['threshold','result','len']
-            perc_val_result_df['diff'] = perc_val_result_df['result'] - perc_val_result_df['threshold']
-            len_bad_diffs = (perc_val_result_df[perc_val_result_df['diff']<-0.05])['diff']
+            # perc_val_result_df.columns = ['threshold','result','len']
+            # perc_val_result_df['diff'] = perc_val_result_df['result'] - perc_val_result_df['threshold']
+            # len_bad_diffs = (perc_val_result_df[perc_val_result_df['diff']<-0.05])['diff']
             #print(f'bad diff percentage: {len(len_bad_diffs)/len(perc_val_result_df)}')
             #print(f'bad diff mean: {round(np.mean(len_bad_diffs),2)}')
+#%%
 
             self.len_lost = round((oldlen-newlen)/oldlen,2)
             errors_final=errors/reps
@@ -277,7 +278,7 @@ class Utils_Class:
     def generate_metric(self, model_number, region_feature_cols, region_data_list, region, reps):
         
         df_temp = self.TARGET_DF[self.TARGET_DF['regionAbrev'].isin(region_data_list)].copy()
-        df_temp = df_temp[df_temp['is_playoffs']==False]
+        #df_temp = df_temp[df_temp['is_playoffs']==False]
         temp_cols = [x for x in list(df_temp.columns) if x.replace('Team_Red_','').replace('Team_Blue_','') in region_feature_cols]
         df_temp = df_temp[temp_cols+self.INFO_COLS]
         
@@ -323,21 +324,22 @@ class Utils_Class:
 
     def bet_ratio_vars(self, result=None, ratio=None, chance=None):
         if result==None:
-            result = chance*(1-(1-ratio)) - (1-chance) - 1
+            result = (chance * (ratio-1)) - (1-chance)
+
             print(f'Expected result: {result}')
 
         elif ratio==None:
-            ratio = (result + (1-chance) + 1)/chance
+            ratio = ((result + (1 - chance)) / chance) + 1
             print(f'Expected ratio: {ratio}')
         
         elif chance==None:
             chance_range = np.arange(0, 1, 0.05)
-            true_range = [(chance*(1-(1-ratio)) - (1-chance) - 1) > 0 for chance in chance_range]
+            true_range = [(chance * (ratio-1)) - (1-chance) > 0 for chance in chance_range]
             range_df = pd.DataFrame([chance_range,true_range])
             range_df = range_df[range_df.columns[range_df.iloc[1]==True]]
 
             min_chance = round(range_df.iloc[0].min(),3)
-            result_min = round(min_chance*(1-(1-ratio)) - (1-min_chance) - 1,3)
+            result_min = round((min_chance * (ratio-1)) - (1-min_chance),3)
 
             print(f'Min chance: {min_chance}')
             print(f'Result on min chance: {result_min}')

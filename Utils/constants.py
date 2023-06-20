@@ -15,7 +15,7 @@ DATE_COLS = ['Semester','Year','Split']
 EXTRA_DATE_COLS = ['realSemester', 'realYear','realSemesterYear', 'semesterYear']
 ALL_DATE_COLS = DATE_COLS + EXTRA_DATE_COLS
 
-CURRENT_YEAR = 2022
+CURRENT_YEAR = 2023
 CURRENT_SEMESTER = 1
 CURRENT_YEAR_SEMESTER = str(CURRENT_YEAR) + str(CURRENT_SEMESTER)
 
