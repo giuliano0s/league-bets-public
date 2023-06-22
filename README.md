@@ -8,8 +8,10 @@ League Bets is a pack multi-variate prediction models with target on League of L
 <dl>
   <dt>> Logistic: <b>70%</b></dt>
   <dt>> Binary: <b>NA</b></dt>
-  <dt>> Regression: <b>NA</b></dt>
+  <dt>> Regression: <b>NA (update needed)</b></dt>
 </dl>
+
+<hr>
 
 ## Current targets are:
 <dl>
@@ -19,19 +21,44 @@ League Bets is a pack multi-variate prediction models with target on League of L
   <dd>> Number of total kills in the match.</dd>
 </dl>
 
+<hr>
+
 ## Major files:
 <dl>
   <dt>Predictor_Binary.ipynb</dt>
   <dd>> Trains a range of Classification models to predict <b>Score</b> using 0 or 1</dd>
+
   <dt>Predictor_Logistic.ipynb</dt>
   <dd>> Trains a range of Logistic models to predict <b>Score</b> using a range of rational numbers between 0 and 1.</dd>
+
   <dt>Predictor_Regression.ipynb</dt>
   <dd>> Trains a range of regression models to predict <b>totalKills</b> using whole numbers.</dd>
+
   <dt>testing_model.ipynb</dt>
   <dd>> Manual real proof generation for any model_type, region or season.</dd>
+
   <dt>ETL_Pipeline.ipynb</dt>
   <dd>> Data scraping pipeline for all regions and seasons.</dd>
 </dl>
+
+<hr>
+
+## Utils files:
+<dl>
+  <dt>scraping_file.py</dt>
+  <dd>> Web scraping content. Generate or update data files.</dd>
+
+  <dt>utils_file.py</dt>
+  <dd>> Initialize files, define models, data manipulation functions, cache generation and more.</dd>
+
+  <dt>model_file.py</dt>
+  <dd>> Final model for validation and real proof.</dd>
+
+  <dt>contants.py</dt>
+  <dd>> Constants definition.</dd>
+</dl>
+
+<hr>
 
 ## Main data files:
 

@@ -14,7 +14,8 @@ from sklearn.svm import LinearSVC
 from xgboost import XGBClassifier
 
 ##=================================LOGISTICS=================================##
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, BayesianRidge
+from sklearn.naive_bayes import GaussianNB, MultinomialNB
 
 ##=================================REGRESSORS=================================##
 from sklearn.ensemble import GradientBoostingRegressor, IsolationForest, RandomForestRegressor
@@ -81,19 +82,11 @@ class Utils_Class:
         elif model_type=='logistic':
             self.BASE_MODELS = [
                                 LogisticRegression(solver='newton-cg', penalty=None) #0
-                                ,LogisticRegression(solver='newton-cg') #1
-                                ,LogisticRegression() #2
-                                ,LogisticRegression(penalty=None) #3
-                                ,LogisticRegression(solver='liblinear') #4
-                                ,LogisticRegression(solver='liblinear', penalty='l1') #5
-                                ,LogisticRegression(solver='newton-cholesky') #6
-                                ,LogisticRegression(solver='newton-cholesky', penalty=None) #7
-                                ,LogisticRegression(solver='sag') #8
-                                ,LogisticRegression(solver='sag', penalty=None) #9
-                                ,LogisticRegression(solver='saga') #9
-                                #,LogisticRegression(solver='saga', penalty='elasticnet') #10
-                                ,LogisticRegression(solver='saga', penalty='l1') #11
-                                ,LogisticRegression(solver='saga', penalty=None) #12
+                                ,LogisticRegression(solver='saga') #1
+                                ,XGBClassifier(objective='binary:logistic') #2
+                                ,XGBClassifier(booster='dart', objective='binary:logistic') #3
+                                ,BayesianRidge() #4
+                                ,GaussianNB() #5
                                 ]
         elif model_type=='regression':
             self.BASE_MODELS = [
@@ -229,8 +222,13 @@ class Utils_Class:
         elif self.MODEL_TYPE=='logistic':
             for i in range(reps):
                 region_model.fit(xtrain, ytrain)
-                pred = region_model.predict_proba(xtest)
-                pred = pred[:,1]
+
+                if model_number in [0,1,2,3,5,6]:
+                    pred = region_model.predict_proba(xtest)
+                    pred = pred[:,1]
+                else:
+                    pred = region_model.predict(xtest)
+
                 prediction_df = pd.DataFrame([pred, ytest]).transpose()
                 oldlen = len(prediction_df)
                 prediction_df = prediction_df[(prediction_df[0]>abs(threshold-1))
@@ -243,26 +241,32 @@ class Utils_Class:
                     errors = 1+errors
                     print('no data left after filtering')
 #%%
-            # df_temp = pd.DataFrame(dict({'predicted':pred,'true':ytest}))
-            # perc_val_df = df_temp
+            df_temp = pd.DataFrame(dict({'predicted':pred,'true':ytest}))
+            perc_val_df = df_temp
 
-            # perc_val_df['round'] = perc_val_df['predicted'].round().astype(int)
-            # perc_val_df['result'] = (perc_val_df['true'] == perc_val_df['round']).replace({True:1,False:0})
-            # perc_val_df['predicted'] = perc_val_df['predicted'].apply(lambda x: 1-x if x<0.5 else x)
-            # perc_val_result_df = pd.DataFrame()
-            # for x in np.arange(0.5,0.9,0.1):
-            #     threshold2 = round(x,2)
-            #     test_df = perc_val_df[(perc_val_df['predicted']>=threshold2)
-            #                                 & (perc_val_df['predicted']<=threshold2+0.1)]
-            #     if len(test_df.result.unique())>1:
-            #         result = round(test_df.result.value_counts()[1]/len(test_df),2)
-            #         perc_val_result_df = perc_val_result_df.append(pd.Series([round(threshold2,2), result, len(test_df)]), ignore_index=True)
+            perc_val_df['round'] = perc_val_df['predicted'].round().astype(int)
+            perc_val_df['result'] = (perc_val_df['true'] == perc_val_df['round']).replace({True:1,False:0})
+            perc_val_df['predicted'] = perc_val_df['predicted'].apply(lambda x: 1-x if x<0.5 else x)
+            perc_val_result_df = pd.DataFrame()
+            for x in np.arange(0.5,0.9,0.05):
+                threshold2 = round(x,2)
+                test_df = perc_val_df[(perc_val_df['predicted']>=threshold2)
+                                            & (perc_val_df['predicted']<=threshold2+0.05)]
+                if len(test_df.result.unique())>1:
+                    result = round(test_df.result.value_counts()[1]/len(test_df),2)
+                    perc_val_result_df = perc_val_result_df.append(pd.Series([round(threshold2,2), result, len(test_df)]), ignore_index=True)
 
-            # perc_val_result_df.columns = ['threshold','result','len']
-            # perc_val_result_df['diff'] = perc_val_result_df['result'] - perc_val_result_df['threshold']
-            # len_bad_diffs = (perc_val_result_df[perc_val_result_df['diff']<-0.05])['diff']
-            #print(f'bad diff percentage: {len(len_bad_diffs)/len(perc_val_result_df)}')
-            #print(f'bad diff mean: {round(np.mean(len_bad_diffs),2)}')
+            if len(perc_val_result_df)>1:
+                perc_val_result_df.columns = ['threshold','result','len']
+                perc_val_result_df['diff'] = perc_val_result_df['result'] - perc_val_result_df['threshold']
+                bad_diffs = (perc_val_result_df[perc_val_result_df['diff']<0])['diff']
+                if len(bad_diffs)>1:
+                    mean_diff = np.mean(bad_diffs)
+                else: mean_diff = -1
+                #mean_diff = np.mean(perc_val_result_df['diff'])
+            else: mean_diff = -1
+            # print(f'bad diff percentage: {len(len_bad_diffs)/len(perc_val_result_df)}')
+            # print(f'bad diff mean: {round(np.mean(len_bad_diffs),2)}')
 #%%
 
             self.len_lost = round((oldlen-newlen)/oldlen,2)
@@ -273,7 +277,7 @@ class Utils_Class:
             for i in range(reps):
                 pass
 
-        return metric, pred
+        return metric, pred, mean_diff
     
     def generate_metric(self, model_number, region_feature_cols, region_data_list, region, reps):
         
@@ -283,18 +287,20 @@ class Utils_Class:
         df_temp = df_temp[temp_cols+self.INFO_COLS]
         
         xtrain, ytrain, xtest, ytest = self.train_test_split_region(df_temp, region, verbose=False)
+        
         self.train_len = len(xtrain)
 
         if len(ytrain.unique())>1:
-            metric, pred = self.make_pred(model_number, reps, xtrain, ytrain, xtest, ytest)
+            metric, pred, mean_diff = self.make_pred(model_number, reps, xtrain, ytrain, xtest, ytest)
         else:
             metric = 1
             pred = []
+            mean_diff = -1
             print('only one class found')
             print(f'ytrain len: {len(ytrain)}')
             print(f'list of data used: {region_data_list}')
         
-        return metric, pred, ytest
+        return metric, pred, ytest, mean_diff
 
     def region_lists(self):
 
