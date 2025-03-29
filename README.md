@@ -2,7 +2,7 @@
 Public releases of league-bets
 
 ## Definition:
-League Bets is a pack multi-variate prediction models with target on League of Legends Professional matches results.
+League Bets is a machine learning system that predicts outcomes of professional League of Legends matches. It uses real data scraped from Riot’s API, processes it, and trains models to predict match winners and "total kills" (score).
 
 #### Current real proof accuracy:
 <dl>
@@ -57,6 +57,15 @@ League Bets is a pack multi-variate prediction models with target on League of L
   <dt>contants.py</dt>
   <dd>> Constants definition.</dd>
 </dl>
+
+<hr>
+
+## How to run
+
+1. Clone this repo
+2. Run `ETL_Pipeline.ipynb` to collect and prepare the data
+3. Choose one of the predictor notebooks (e.g., `Predictor_Logistic.ipynb`) to train and test
+4. Use `testing_model.ipynb` to generate predictions based on specific region and season
 
 <hr>
 
