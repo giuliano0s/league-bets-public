@@ -54,7 +54,7 @@ League Bets is a machine learning system that predicts outcomes of professional 
   <dt>model_file.py</dt>
   <dd>> Final model for validation and real proof.</dd>
 
-  <dt>contants.py</dt>
+  <dt>constants.py</dt>
   <dd>> Constants definition.</dd>
 </dl>
 
@@ -116,14 +116,14 @@ League Bets is a machine learning system that predicts outcomes of professional 
   </tr>
   <tr>
     <td>feature_cols</td>
-    <td>Wich columns to use as features</td>
+    <td>Which columns to use as features</td>
     <td>Dictionary</td>
     <td>Cache</td>
     <td>Variable by region</td>
   </tr>
   <tr>
     <td>train_data</td>
-    <td>Wich regions to use as train data</td>
+    <td>Which regions to use as train data</td>
     <td>Dictionary</td>
     <td>Cache</td>
     <td>Variable by region</td>
