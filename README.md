@@ -7,8 +7,6 @@ League Bets is a machine learning system that predicts outcomes of professional 
 #### Current real proof accuracy:
 <dl>
   <dt>> Logistic: <b>70%</b></dt>
-  <dt>> Binary: <b>NA</b></dt>
-  <dt>> Regression: <b>NA (update needed)</b></dt>
 </dl>
 
 <hr>
